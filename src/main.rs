@@ -1,6 +1,6 @@
 use lambda::{handler_fn, Context};
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::{Value};
 use serde::{Serialize, Deserialize};
 use base64;
 use unicode_segmentation::UnicodeSegmentation;
@@ -32,8 +32,12 @@ async fn main() -> Result<(), Error> {
 }
 
 async fn handler(event: Value, _: Context) -> Result<Value, Error> {
-    let serialized_state = &event["serialized_state"];
-    let program_code = &event["program_code"];
+    let body = &event["body"];
+    println!("{}", body);
+    let body: Value = serde_json::from_str(body.as_str().unwrap())?;
+
+    let serialized_state = &body["serialized_state"];
+    let program_code = &body["program_code"];
 
     let mut program_content: ProgramContent = get_or_start_program_content(serialized_state, program_code);
 
@@ -227,8 +231,13 @@ mod tests {
 
     #[tokio::test]
     async fn handler_handles() {
+        let json_body = json!({
+          "program_code": "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+        });
+        let stringified_body: String = json_body.to_string();
+
         let event = json!({
-            "program_code": "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+          "body": stringified_body
         });
 
         let handler_run = handler(event.clone(), Context::default())
@@ -259,7 +268,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_convert_stdin_to_u8_A() {
+    async fn test_convert_stdin_to_u8_cap_a() {
       let event = json!({
         "stdin": "A"
       });
@@ -279,7 +288,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_convert_stdin_to_u8_AA() {
+    async fn test_convert_stdin_to_u8_cap_aa() {
       let event = json!({
         "stdin": "AA"
       });
