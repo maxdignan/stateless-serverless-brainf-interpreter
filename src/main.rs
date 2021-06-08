@@ -211,6 +211,7 @@ mod tests {
         println!("{}", val);
         println!("{}", &handler_run["stdout"]);
 
-        assert_eq!(val.as_str().unwrap(), String::from("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."))
+        assert_eq!(val.as_str().unwrap(), String::from("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."));
+        assert_eq!(handler_run["stdout"].as_str().unwrap(), String::from("Hello World!\n"))
     }
 }
