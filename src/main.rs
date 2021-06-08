@@ -105,7 +105,7 @@ fn execute_program(program_content: &mut ProgramContent, serialized_state: &Valu
         } else {
           program_content.state[program_content.data_pointer as usize] = program_content.state[program_content.data_pointer as usize] - 1
         },
-      "." => print!("{}", program_content.state[program_content.data_pointer as usize]),
+      "." => program_content.stdout.push_str((program_content.state[program_content.data_pointer as usize] as char).to_string().as_str()),
       "," => {
         program_content.expecting_input = true;
         break
@@ -127,8 +127,6 @@ fn execute_program(program_content: &mut ProgramContent, serialized_state: &Valu
 
     program_content.instruction_pointer = program_content.instruction_pointer + 1;
     // program_content.stdout.push_str(program_content.instruction_pointer.to_string().as_str());
-
-    // println!("{}", program_content.data_pointer);
 
     if program_content.instruction_pointer as usize >= program_content.program_code.len() {
       break;
