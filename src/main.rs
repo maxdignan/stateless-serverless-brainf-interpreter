@@ -82,8 +82,13 @@ fn get_or_start_program_content(serialized_state: &Value, program_code: &Value) 
   
 }
 
-fn execute_program(program_content: &mut ProgramContent, serialized_state: &Value) {
-  program_content.expecting_input = false;
+fn execute_program(program_content: &mut ProgramContent, stdin: &Value) {
+  
+  // restarting with input from stdin
+  if (program_content.expecting_input) {
+    program_content.state[program_content.data_pointer as usize] = convert_stdin_to_u8(stdin);
+    program_content.expecting_input = false;
+  }
 
   loop {
     let instruction: &str = program_content.program_code.graphemes(true).collect::<Vec<&str>>()[program_content.instruction_pointer as usize];
@@ -91,37 +96,45 @@ fn execute_program(program_content: &mut ProgramContent, serialized_state: &Valu
     match instruction {
       ">" =>
         program_content.data_pointer = program_content.data_pointer + 1,
+
       "<" =>
         program_content.data_pointer = program_content.data_pointer - 1,
+
       "+" =>
         if program_content.state[program_content.data_pointer as usize] == 255 {
           program_content.state[program_content.data_pointer as usize] = 0
         } else {
           program_content.state[program_content.data_pointer as usize] = program_content.state[program_content.data_pointer as usize] + 1
         },
+
       "-" =>
         if program_content.state[program_content.data_pointer as usize] == 0 {
           program_content.state[program_content.data_pointer as usize] = 255
         } else {
           program_content.state[program_content.data_pointer as usize] = program_content.state[program_content.data_pointer as usize] - 1
         },
+
       "." => program_content.stdout.push_str((program_content.state[program_content.data_pointer as usize] as char).to_string().as_str()),
+
       "," => {
         program_content.expecting_input = true;
         break
       },
+
       "[" =>
         if program_content.state[program_content.data_pointer as usize] == 0 {
           program_content.instruction_pointer = get_matching_forward_instruction_pointer(&program_content);
         } else {
           ()
         },
+
       "]" =>
         if program_content.state[program_content.data_pointer as usize] != 0 {
           program_content.instruction_pointer = get_matching_backward_instruction_pointer(&program_content);
         } else {
           ()
         },
+
       _ => panic!("oh no, invalid op found!")
     }
 
@@ -185,6 +198,17 @@ fn validate_program(program_content: &ProgramContent) -> bool {
     } else {
         false
     }
+}
+
+fn convert_stdin_to_u8(stdin: &Value) -> u8 {
+  let stdin_as_string = stdin.as_str().unwrap();
+  let possible_u8_int = stdin_as_string.parse::<u8>();
+
+  if possible_u8_int.is_err() {
+    stdin_as_string.chars().nth(0).unwrap() as u8
+  } else {
+    possible_u8_int.unwrap()
+  }
 }
 
 #[cfg(test)]
