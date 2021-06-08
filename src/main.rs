@@ -85,8 +85,12 @@ fn get_or_start_program_content(serialized_state: &Value, program_code: &Value) 
 fn execute_program(program_content: &mut ProgramContent, stdin: &Value) {
   
   // restarting with input from stdin
-  if (program_content.expecting_input) {
-    program_content.state[program_content.data_pointer as usize] = convert_stdin_to_u8(stdin);
+  if program_content.expecting_input {
+    match convert_stdin_to_u8(stdin) {
+      Ok(int) => program_content.state[program_content.data_pointer as usize] = int,
+      Err(_) => return program_content.stdout = String::from("Valid inputs are either 1..255 or a single character.")
+    }
+    
     program_content.expecting_input = false;
   }
 
@@ -200,14 +204,19 @@ fn validate_program(program_content: &ProgramContent) -> bool {
     }
 }
 
-fn convert_stdin_to_u8(stdin: &Value) -> u8 {
+fn convert_stdin_to_u8(stdin: &Value) -> Result<u8, bool> {
   let stdin_as_string = stdin.as_str().unwrap();
   let possible_u8_int = stdin_as_string.parse::<u8>();
 
   if possible_u8_int.is_err() {
-    stdin_as_string.chars().nth(0).unwrap() as u8
+    if stdin_as_string.len() > 1 {
+      println!("Valid inputs are either 1..255 or a single character.");
+      Err(false)
+    } else {
+      Ok(stdin_as_string.chars().nth(0).unwrap() as u8)
+    }
   } else {
-    possible_u8_int.unwrap()
+    Ok(possible_u8_int.unwrap())
   }
 }
 
@@ -237,5 +246,75 @@ mod tests {
 
         assert_eq!(val.as_str().unwrap(), String::from("++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."));
         assert_eq!(handler_run["stdout"].as_str().unwrap(), String::from("Hello World!\n"))
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_255() {
+      let event = json!({
+        "stdin": "255"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Ok(255));
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_A() {
+      let event = json!({
+        "stdin": "A"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Ok(65));
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_a() {
+      let event = json!({
+        "stdin": "a"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Ok(97));
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_AA() {
+      let event = json!({
+        "stdin": "AA"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Err(false));
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_256() {
+      let event = json!({
+        "stdin": "256"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Err(false));
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_0() {
+      let event = json!({
+        "stdin": "0"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Ok(0));
+    }
+
+    #[tokio::test]
+    async fn test_convert_stdin_to_u8_neg1() {
+      let event = json!({
+        "stdin": "-1"
+      });
+
+      let stdin_converted = convert_stdin_to_u8(&event["stdin"]);
+      assert_eq!(stdin_converted, Err(false));
     }
 }
